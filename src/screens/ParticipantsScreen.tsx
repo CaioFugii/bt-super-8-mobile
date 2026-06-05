@@ -13,16 +13,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Gender, Participant, Tournament } from '../types';
+import { extractApiErrorMessage } from '../utils/apiError';
+import { confirmAction } from '../utils/confirmAction';
+import { showError, showSuccess } from '../utils/feedback';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Participants'>;
-
-function extractErrorMessage(e: unknown): string {
-  const msg = (e as { response?: { data?: { message?: string | string[] } } })
-    ?.response?.data?.message;
-  if (Array.isArray(msg)) return msg.join('\n');
-  if (typeof msg === 'string') return msg;
-  return 'Operação não concluída.';
-}
 
 const GENDER_LABEL: Record<Gender, string> = {
   MALE: 'Homem',
@@ -35,6 +30,7 @@ export default function ParticipantsScreen({ route }: Props) {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [name, setName] = useState('');
   const [gender, setGender] = useState<Gender>('MALE');
+  const [processing, setProcessing] = useState(false);
 
   const isMixed = tournament?.format === 'SUPER_8_MIXED';
   const maleCount = participants.filter((p) => p.gender === 'MALE').length;
@@ -69,26 +65,48 @@ export default function ParticipantsScreen({ route }: Props) {
       setName('');
       load();
     } catch (e) {
-      Alert.alert('Erro', extractErrorMessage(e));
+      showError(extractApiErrorMessage(e));
     }
   };
 
   const remove = async (id: string) => {
+    const confirmed = await confirmAction({
+      title: 'Remover participante?',
+      message: 'Este participante será removido do torneio.',
+      confirmLabel: 'Remover',
+      destructive: true,
+    });
+    if (!confirmed || processing) return;
+
+    setProcessing(true);
     try {
       await api.delete(`/tournaments/${tournamentId}/participants/${id}`);
       load();
     } catch (e) {
-      Alert.alert('Erro', extractErrorMessage(e));
+      showError(extractApiErrorMessage(e));
+    } finally {
+      setProcessing(false);
     }
   };
 
   const withdraw = async (id: string) => {
+    const confirmed = await confirmAction({
+      title: 'Marcar desistência?',
+      message:
+        'As partidas pendentes deste participante serão processadas como W.O. ou canceladas conforme as regras do torneio.',
+      confirmLabel: 'Confirmar desistência',
+    });
+    if (!confirmed || processing) return;
+
+    setProcessing(true);
     try {
       await api.post(`/tournaments/${tournamentId}/participants/${id}/withdraw`, {});
-      Alert.alert('Participante marcado como desistente');
+      showSuccess('Participante marcado como desistente.');
       load();
     } catch (e) {
-      Alert.alert('Erro', extractErrorMessage(e));
+      showError(extractApiErrorMessage(e));
+    } finally {
+      setProcessing(false);
     }
   };
 

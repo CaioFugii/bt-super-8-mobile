@@ -1,7 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   Share,
@@ -14,7 +13,10 @@ import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { extractApiErrorMessage } from '../utils/apiError';
+import { confirmAction } from '../utils/confirmAction';
 import { formatDateTime } from '../utils/formatDate';
+import { showError, showSuccess } from '../utils/feedback';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ShareTournament'>;
 
@@ -28,14 +30,6 @@ type ShareLinkResponse = {
   publicUrl: string;
   publicTokenExpiresAt: string;
 };
-
-function extractErrorMessage(e: unknown): string {
-  const msg = (e as { response?: { data?: { message?: string | string[] } } })
-    ?.response?.data?.message;
-  if (Array.isArray(msg)) return msg.join('\n');
-  if (typeof msg === 'string') return msg;
-  return 'Operação não concluída.';
-}
 
 export default function ShareTournamentScreen({ route }: Props) {
   const { tournamentId } = route.params;
@@ -53,11 +47,20 @@ export default function ShareTournamentScreen({ route }: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      load().catch(() => Alert.alert('Erro', 'Não foi possível carregar o link.'));
+      load().catch((e) => showError(extractApiErrorMessage(e)));
     }, [load]),
   );
 
   const generateLink = async () => {
+    if (status?.active) {
+      const confirmed = await confirmAction({
+        title: 'Gerar novo link?',
+        message: 'O link anterior deixará de funcionar imediatamente.',
+        confirmLabel: 'Gerar novo link',
+      });
+      if (!confirmed) return;
+    }
+
     setLoading(true);
     try {
       const { data } = await api.post<ShareLinkResponse>(
@@ -69,8 +72,9 @@ export default function ShareTournamentScreen({ route }: Props) {
         publicTokenExpiresAt: data.publicTokenExpiresAt,
       });
       setShowQr(true);
+      showSuccess(status?.active ? 'Novo link público gerado.' : 'Link público gerado.');
     } catch (e) {
-      Alert.alert('Erro', extractErrorMessage(e));
+      showError(extractApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -79,7 +83,7 @@ export default function ShareTournamentScreen({ route }: Props) {
   const copyLink = async () => {
     if (!status?.publicUrl) return;
     await Clipboard.setStringAsync(status.publicUrl);
-    Alert.alert('Link copiado!');
+    showSuccess('Link copiado!');
   };
 
   const shareLink = async () => {
@@ -87,26 +91,26 @@ export default function ShareTournamentScreen({ route }: Props) {
     await Share.share({ message: status.publicUrl, url: status.publicUrl });
   };
 
-  const revokeLink = () => {
-    Alert.alert(
-      'Revogar link',
-      'O link público deixará de funcionar imediatamente.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Revogar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/tournaments/${tournamentId}/share-link`);
-              await load();
-            } catch (e) {
-              Alert.alert('Erro', extractErrorMessage(e));
-            }
-          },
-        },
-      ],
-    );
+  const revokeLink = async () => {
+    const confirmed = await confirmAction({
+      title: 'Revogar link público?',
+      message:
+        'Competidores que receberam este link não conseguirão mais acessar o torneio por ele.',
+      confirmLabel: 'Revogar link',
+      destructive: true,
+    });
+    if (!confirmed || loading) return;
+
+    setLoading(true);
+    try {
+      await api.delete(`/tournaments/${tournamentId}/share-link`);
+      showSuccess('Link público revogado.');
+      await load();
+    } catch (e) {
+      showError(extractApiErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!status) return null;
@@ -126,7 +130,9 @@ export default function ShareTournamentScreen({ route }: Props) {
             onPress={generateLink}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>Compartilhar Torneio</Text>
+            <Text style={styles.buttonText}>
+              {loading ? 'Gerando link...' : 'Compartilhar Torneio'}
+            </Text>
           </Pressable>
         </>
       ) : (
@@ -162,7 +168,9 @@ export default function ShareTournamentScreen({ route }: Props) {
             onPress={generateLink}
             disabled={loading}
           >
-            <Text style={styles.secondaryText}>Gerar Novo Link</Text>
+            <Text style={styles.secondaryText}>
+              {loading ? 'Gerando link...' : 'Gerar Novo Link'}
+            </Text>
           </Pressable>
           <Pressable style={styles.danger} onPress={revokeLink}>
             <Text style={styles.dangerText}>Revogar Link</Text>

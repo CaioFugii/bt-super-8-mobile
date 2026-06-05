@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthStore } from '../store/authStore';
+import { extractApiErrorMessage } from '../utils/apiError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -22,8 +23,8 @@ export default function LoginScreen({ navigation }: Props) {
   const onSubmit = async () => {
     try {
       await login(email.trim(), password);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível entrar. Verifique e-mail e senha.');
+    } catch (e) {
+      Alert.alert('Erro', extractApiErrorMessage(e));
     }
   };
 

@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -14,13 +14,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Match, WinnerTeam } from '../types';
+import { extractApiErrorMessage } from '../utils/apiError';
+import { confirmAction } from '../utils/confirmAction';
+import { showError, showSuccess } from '../utils/feedback';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Matches'>;
 
-function formatTeam(
-  p1: { name: string },
-  p2: { name: string },
-): string {
+function formatTeam(p1: { name: string }, p2: { name: string }): string {
   return `${p1.name} / ${p2.name}`;
 }
 
@@ -28,8 +28,10 @@ export default function MatchesScreen({ route }: Props) {
   const { tournamentId } = route.params;
   const [matches, setMatches] = useState<Match[]>([]);
   const [selected, setSelected] = useState<Match | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [scoreA, setScoreA] = useState('');
   const [scoreB, setScoreB] = useState('');
+  const [processing, setProcessing] = useState(false);
 
   const load = useCallback(async () => {
     const { data } = await api.get<Match[]>(`/tournaments/${tournamentId}/matches`);
@@ -42,34 +44,78 @@ export default function MatchesScreen({ route }: Props) {
     }, [load]),
   );
 
+  const openMatch = (match: Match) => {
+    if (match.status === 'PENDING') {
+      setIsEditing(false);
+      setSelected(match);
+      setScoreA('');
+      setScoreB('');
+      return;
+    }
+    if (match.status === 'FINISHED' || match.status === 'WALKOVER') {
+      setIsEditing(true);
+      setSelected(match);
+      setScoreA(String(match.teamAScore ?? ''));
+      setScoreB(String(match.teamBScore ?? ''));
+    }
+  };
+
   const saveResult = async () => {
-    if (!selected) return;
+    if (!selected || processing) return;
+
+    const confirmed = await confirmAction({
+      title: isEditing ? 'Editar placar?' : 'Confirmar placar?',
+      message: isEditing
+        ? 'O ranking será recalculado com base no novo resultado.'
+        : 'Este resultado atualizará o ranking do torneio.',
+      confirmLabel: isEditing ? 'Salvar alteração' : 'Salvar placar',
+    });
+    if (!confirmed) return;
+
+    setProcessing(true);
     try {
-      await api.patch(
-        `/tournaments/${tournamentId}/matches/${selected.id}/result`,
-        {
-          teamAScore: parseInt(scoreA, 10),
-          teamBScore: parseInt(scoreB, 10),
-        },
-      );
+      const endpoint = isEditing
+        ? `/tournaments/${tournamentId}/matches/${selected.id}/result/edit`
+        : `/tournaments/${tournamentId}/matches/${selected.id}/result`;
+
+      await api.patch(endpoint, {
+        teamAScore: parseInt(scoreA, 10),
+        teamBScore: parseInt(scoreB, 10),
+      });
+      showSuccess('Placar salvo com sucesso.');
       setSelected(null);
       load();
-    } catch {
-      Alert.alert('Erro', 'Placar inválido para a configuração do torneio.');
+    } catch (e) {
+      showError(extractApiErrorMessage(e));
+    } finally {
+      setProcessing(false);
     }
   };
 
   const markWalkover = async (winner: WinnerTeam) => {
-    if (!selected) return;
+    if (!selected || processing) return;
+
+    const confirmed = await confirmAction({
+      title: 'Marcar W.O.?',
+      message:
+        'A dupla adversária será declarada vencedora e o ranking será atualizado.',
+      confirmLabel: 'Marcar W.O.',
+    });
+    if (!confirmed) return;
+
+    setProcessing(true);
     try {
       await api.post(
         `/tournaments/${tournamentId}/matches/${selected.id}/walkover`,
         { winnerTeam: winner },
       );
+      showSuccess('W.O. registrado.');
       setSelected(null);
       load();
-    } catch {
-      Alert.alert('Erro', 'Não foi possível marcar W.O.');
+    } catch (e) {
+      showError(extractApiErrorMessage(e));
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -86,17 +132,7 @@ export default function MatchesScreen({ route }: Props) {
             {matches
               .filter((m) => m.round === round)
               .map((m) => (
-                <Pressable
-                  key={m.id}
-                  style={styles.match}
-                  onPress={() => {
-                    if (m.status === 'PENDING') {
-                      setSelected(m);
-                      setScoreA('');
-                      setScoreB('');
-                    }
-                  }}
-                >
+                <Pressable key={m.id} style={styles.match} onPress={() => openMatch(m)}>
                   <Text style={styles.court}>Quadra {m.courtNumber ?? '-'}</Text>
                   <Text>{formatTeam(m.teamA.player1, m.teamA.player2)}</Text>
                   <Text style={styles.vs}>x</Text>
@@ -104,7 +140,7 @@ export default function MatchesScreen({ route }: Props) {
                   <Text style={styles.status}>
                     {m.status === 'PENDING'
                       ? 'Toque para registrar'
-                      : `${m.teamAScore}x${m.teamBScore} (${m.status})`}
+                      : `${m.teamAScore}x${m.teamBScore} (${m.status}) — toque para editar`}
                   </Text>
                 </Pressable>
               ))}
@@ -114,7 +150,9 @@ export default function MatchesScreen({ route }: Props) {
 
       <Modal visible={!!selected} transparent animationType="slide">
         <View style={styles.modal}>
-          <Text style={styles.modalTitle}>Resultado</Text>
+          <Text style={styles.modalTitle}>
+            {isEditing ? 'Editar resultado' : 'Resultado'}
+          </Text>
           <View style={styles.scoreRow}>
             <TextInput
               style={styles.scoreInput}
@@ -122,6 +160,7 @@ export default function MatchesScreen({ route }: Props) {
               placeholder="A"
               value={scoreA}
               onChangeText={setScoreA}
+              editable={!processing}
             />
             <Text>x</Text>
             <TextInput
@@ -130,18 +169,41 @@ export default function MatchesScreen({ route }: Props) {
               placeholder="B"
               value={scoreB}
               onChangeText={setScoreB}
+              editable={!processing}
             />
           </View>
-          <Pressable style={styles.btn} onPress={saveResult}>
-            <Text style={styles.btnText}>Salvar placar</Text>
+          <Pressable
+            style={[styles.btn, processing && styles.disabled]}
+            onPress={saveResult}
+            disabled={processing}
+          >
+            {processing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.btnText}>
+                {isEditing ? 'Salvar alteração' : 'Salvar placar'}
+              </Text>
+            )}
           </Pressable>
-          <Pressable style={styles.woBtn} onPress={() => markWalkover('TEAM_A')}>
-            <Text>W.O. — vitória dupla A</Text>
-          </Pressable>
-          <Pressable style={styles.woBtn} onPress={() => markWalkover('TEAM_B')}>
-            <Text>W.O. — vitória dupla B</Text>
-          </Pressable>
-          <Pressable onPress={() => setSelected(null)}>
+          {!isEditing && (
+            <>
+              <Pressable
+                style={[styles.woBtn, processing && styles.disabled]}
+                onPress={() => markWalkover('TEAM_A')}
+                disabled={processing}
+              >
+                <Text>W.O. — vitória dupla A</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.woBtn, processing && styles.disabled]}
+                onPress={() => markWalkover('TEAM_B')}
+                disabled={processing}
+              >
+                <Text>W.O. — vitória dupla B</Text>
+              </Pressable>
+            </>
+          )}
+          <Pressable onPress={() => !processing && setSelected(null)} disabled={processing}>
             <Text style={styles.cancel}>Cancelar</Text>
           </Pressable>
         </View>
@@ -166,4 +228,5 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: '600' },
   woBtn: { backgroundColor: '#fff', padding: 12, alignItems: 'center', borderTopWidth: 1, borderColor: '#eee' },
   cancel: { backgroundColor: '#fff', padding: 16, textAlign: 'center', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, color: '#64748b' },
+  disabled: { opacity: 0.6 },
 });

@@ -1,7 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,7 +12,9 @@ import {
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Tournament, TournamentFormat } from '../types';
+import { extractApiErrorMessage } from '../utils/apiError';
 import { formatDate, toApiDate } from '../utils/formatDate';
+import { showError, showSuccess } from '../utils/feedback';
 import { FORMAT_LABEL } from '../utils/tournamentFormat';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TournamentForm'>;
@@ -32,6 +33,8 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
   const [woWinner, setWoWinner] = useState('6');
   const [woLoser, setWoLoser] = useState('0');
   const [enableForfeit, setEnableForfeit] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!tournamentId) return;
@@ -50,6 +53,12 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
   }, [tournamentId]);
 
   const onSave = async () => {
+    if (!name.trim()) {
+      setNameError('Informe o nome do torneio.');
+      return;
+    }
+    setNameError(null);
+
     const payload = {
       format,
       name: name.trim(),
@@ -64,16 +73,26 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
       forfeitChallengeMode: enableForfeit ? ('RANDOM' as const) : undefined,
     };
 
+    setSaving(true);
     try {
       if (isEdit) {
         await api.patch(`/tournaments/${tournamentId}`, payload);
+        showSuccess('Torneio atualizado com sucesso.');
         navigation.goBack();
       } else {
         const { data } = await api.post<Tournament>('/tournaments', payload);
+        showSuccess('Torneio criado com sucesso.');
         navigation.replace('TournamentDetail', { tournamentId: data.id });
       }
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar o torneio.');
+    } catch (e) {
+      const message = extractApiErrorMessage(e);
+      if (message.includes('nome do torneio')) {
+        setNameError(message);
+      } else {
+        showError(message);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -96,7 +115,16 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
       {format === 'SUPER_8_MIXED' && (
         <Text style={styles.hint}>4 homens + 4 mulheres · duplas mistas</Text>
       )}
-      <TextInput style={styles.input} placeholder="Nome do torneio" value={name} onChangeText={setName} />
+      <TextInput
+        style={[styles.input, nameError && styles.inputError]}
+        placeholder="Nome do torneio"
+        value={name}
+        onChangeText={(value) => {
+          setName(value);
+          if (nameError) setNameError(null);
+        }}
+      />
+      {nameError && <Text style={styles.fieldError}>{nameError}</Text>}
       <TextInput style={styles.input} placeholder="Data (DD/MM/AAAA)" value={date} onChangeText={setDate} />
       <TextInput style={styles.input} placeholder="Local" value={location} onChangeText={setLocation} />
       <Text style={styles.label}>Games por set</Text>
@@ -128,8 +156,8 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
         <Text>Troféu Frango (prenda do último)</Text>
         <Switch value={enableForfeit} onValueChange={setEnableForfeit} />
       </View>
-      <Pressable style={styles.button} onPress={onSave}>
-        <Text style={styles.buttonText}>Salvar</Text>
+      <Pressable style={[styles.button, saving && styles.buttonDisabled]} onPress={onSave} disabled={saving}>
+        <Text style={styles.buttonText}>{saving ? 'Salvando...' : 'Salvar'}</Text>
       </Pressable>
     </ScrollView>
   );
@@ -148,5 +176,8 @@ const styles = StyleSheet.create({
   hint: { color: '#64748b', fontSize: 13, marginBottom: 12, marginTop: -4 },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
   button: { backgroundColor: '#0d9488', padding: 16, borderRadius: 8, alignItems: 'center', marginTop: 16 },
+  buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontWeight: '600' },
+  inputError: { borderColor: '#dc2626' },
+  fieldError: { color: '#dc2626', marginTop: -6, marginBottom: 10 },
 });

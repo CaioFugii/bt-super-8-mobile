@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthStore } from '../store/authStore';
+import { extractApiErrorMessage } from '../utils/apiError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -29,8 +30,8 @@ export default function RegisterScreen({ navigation }: Props) {
         password,
         instagram.trim() || undefined,
       );
-    } catch {
-      Alert.alert('Erro', 'Não foi possível criar a conta.');
+    } catch (e) {
+      Alert.alert('Erro', extractApiErrorMessage(e));
     }
   };
 
