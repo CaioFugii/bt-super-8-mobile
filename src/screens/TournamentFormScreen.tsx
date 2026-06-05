@@ -13,7 +13,7 @@ import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Tournament, TournamentFormat } from '../types';
 import { extractApiErrorMessage } from '../utils/apiError';
-import { formatDate, toApiDate } from '../utils/formatDate';
+import { formatDate, formatDateInput, parseDisplayDate } from '../utils/formatDate';
 import { showError, showSuccess } from '../utils/feedback';
 import { FORMAT_LABEL } from '../utils/tournamentFormat';
 
@@ -34,6 +34,7 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
   const [woLoser, setWoLoser] = useState('0');
   const [enableForfeit, setEnableForfeit] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -59,10 +60,17 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
     }
     setNameError(null);
 
+    const apiDate = parseDisplayDate(date);
+    if (!apiDate) {
+      setDateError('Informe uma data válida no formato DD/MM/AAAA.');
+      return;
+    }
+    setDateError(null);
+
     const payload = {
       format,
       name: name.trim(),
-      date: toApiDate(date),
+      date: apiDate,
       location: location.trim() || undefined,
       scoreLimit,
       hasTieBreak,
@@ -125,7 +133,18 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
         }}
       />
       {nameError && <Text style={styles.fieldError}>{nameError}</Text>}
-      <TextInput style={styles.input} placeholder="Data (DD/MM/AAAA)" value={date} onChangeText={setDate} />
+      <TextInput
+        style={[styles.input, dateError && styles.inputError]}
+        placeholder="Data (DD/MM/AAAA)"
+        value={date}
+        onChangeText={(value) => {
+          setDate(formatDateInput(value));
+          if (dateError) setDateError(null);
+        }}
+        keyboardType="number-pad"
+        maxLength={10}
+      />
+      {dateError && <Text style={styles.fieldError}>{dateError}</Text>}
       <TextInput style={styles.input} placeholder="Local" value={location} onChangeText={setLocation} />
       <Text style={styles.label}>Games por set</Text>
       <View style={styles.row}>
@@ -146,7 +165,7 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
         <Text>Tie-break</Text>
         <Switch value={hasTieBreak} onValueChange={setHasTieBreak} />
       </View>
-      <TextInput style={styles.input} placeholder="Quadras (1-4)" keyboardType="number-pad" value={courtCount} onChangeText={setCourtCount} />
+      <TextInput style={styles.input} placeholder="Quadras (1-10)" keyboardType="number-pad" value={courtCount} onChangeText={setCourtCount} />
       <Text style={styles.label}>Placar W.O. (vencedor x perdedor)</Text>
       <View style={styles.row}>
         <TextInput style={[styles.input, styles.half]} keyboardType="number-pad" value={woWinner} onChangeText={setWoWinner} />
