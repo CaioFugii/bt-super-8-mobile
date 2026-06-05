@@ -14,6 +14,7 @@ import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { formatDateTime } from '../utils/formatDate';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ShareTournament'>;
 
@@ -34,17 +35,6 @@ function extractErrorMessage(e: unknown): string {
   if (Array.isArray(msg)) return msg.join('\n');
   if (typeof msg === 'string') return msg;
   return 'Operação não concluída.';
-}
-
-function formatExpiry(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 export default function ShareTournamentScreen({ route }: Props) {
@@ -145,7 +135,7 @@ export default function ShareTournamentScreen({ route }: Props) {
             <Text style={styles.label}>Link ativo até:</Text>
             <Text style={styles.expiry}>
               {status.publicTokenExpiresAt
-                ? formatExpiry(status.publicTokenExpiresAt)
+                ? formatDateTime(status.publicTokenExpiresAt)
                 : '—'}
             </Text>
             <Text style={styles.url}>{status.publicUrl}</Text>

@@ -25,10 +25,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   hydrate: async () => {
     try {
       const { data } = await api.get<Organizer>('/auth/me');
-      set({ organizer: data, isHydrated: true });
+      set({ organizer: data });
     } catch {
-      await setAccessToken(null);
-      set({ organizer: null, isHydrated: true });
+      try {
+        await setAccessToken(null);
+      } catch {
+        // storage may be unavailable; still show login
+      }
+      set({ organizer: null });
+    } finally {
+      set({ isHydrated: true });
     }
   },
 

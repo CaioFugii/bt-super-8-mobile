@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { GenderHighlights, SocialCardData } from '../types';
+import { formatDate } from '../utils/formatDate';
 
 type Props = {
   data: SocialCardData;
@@ -120,7 +121,7 @@ const SocialCardView = forwardRef<View, Props>(({ data, format }, ref) => {
       )}
 
       <Text style={compact ? styles.footerCompact : styles.footer}>
-        {data.tournament.date}
+        {formatDate(data.tournament.date)}
         {data.tournament.location ? ` · ${data.tournament.location}` : ''}
       </Text>
       {data.organizer.instagramHandle && (

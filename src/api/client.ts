@@ -1,16 +1,19 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
 import { API_URL } from '../config';
-
-const TOKEN_KEY = 'bts8_access_token';
+import {
+  clearStoredToken,
+  getStoredToken,
+  setStoredToken,
+} from '../storage/tokenStorage';
 
 export const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 15_000,
 });
 
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+  const token = await getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -19,12 +22,12 @@ api.interceptors.request.use(async (config) => {
 
 export async function setAccessToken(token: string | null) {
   if (token) {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    await setStoredToken(token);
   } else {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await clearStoredToken();
   }
 }
 
 export async function getAccessToken() {
-  return SecureStore.getItemAsync(TOKEN_KEY);
+  return getStoredToken();
 }

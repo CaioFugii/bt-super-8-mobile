@@ -13,6 +13,7 @@ import {
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Tournament, TournamentFormat } from '../types';
+import { formatDate, toApiDate } from '../utils/formatDate';
 import { FORMAT_LABEL } from '../utils/tournamentFormat';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TournamentForm'>;
@@ -37,7 +38,7 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
     api.get<Tournament>(`/tournaments/${tournamentId}`).then(({ data }) => {
       setFormat(data.format ?? 'SUPER_8');
       setName(data.name);
-      setDate(data.date);
+      setDate(formatDate(data.date));
       setLocation(data.location ?? '');
       setScoreLimit(data.scoreLimit);
       setHasTieBreak(data.hasTieBreak);
@@ -52,7 +53,7 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
     const payload = {
       format,
       name: name.trim(),
-      date,
+      date: toApiDate(date),
       location: location.trim() || undefined,
       scoreLimit,
       hasTieBreak,
@@ -96,7 +97,7 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
         <Text style={styles.hint}>4 homens + 4 mulheres · duplas mistas</Text>
       )}
       <TextInput style={styles.input} placeholder="Nome do torneio" value={name} onChangeText={setName} />
-      <TextInput style={styles.input} placeholder="Data (AAAA-MM-DD)" value={date} onChangeText={setDate} />
+      <TextInput style={styles.input} placeholder="Data (DD/MM/AAAA)" value={date} onChangeText={setDate} />
       <TextInput style={styles.input} placeholder="Local" value={location} onChangeText={setLocation} />
       <Text style={styles.label}>Games por set</Text>
       <View style={styles.row}>

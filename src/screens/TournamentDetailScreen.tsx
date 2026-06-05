@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Tournament } from '../types';
+import { formatDate } from '../utils/formatDate';
 import { FORMAT_LABEL } from '../utils/tournamentFormat';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TournamentDetail'>;
@@ -53,7 +54,7 @@ export default function TournamentDetailScreen({ navigation, route }: Props) {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>{tournament.name}</Text>
       <Text style={styles.meta}>
-        {FORMAT_LABEL[tournament.format ?? 'SUPER_8']} · {tournament.date} ·{' '}
+        {FORMAT_LABEL[tournament.format ?? 'SUPER_8']} · {formatDate(tournament.date)} ·{' '}
         {tournament.location ?? 'Sem local'} · {tournament.status}
       </Text>
 

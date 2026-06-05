@@ -13,6 +13,7 @@ import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthStore } from '../store/authStore';
 import type { Tournament, TournamentStatus } from '../types';
+import { formatDate } from '../utils/formatDate';
 import { FORMAT_LABEL } from '../utils/tournamentFormat';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -73,7 +74,7 @@ export default function HomeScreen({ navigation }: Props) {
           >
             <Text style={styles.cardTitle}>{item.name}</Text>
             <Text style={styles.cardMeta}>
-              {FORMAT_LABEL[item.format ?? 'SUPER_8']} · {item.date} ·{' '}
+              {FORMAT_LABEL[item.format ?? 'SUPER_8']} · {formatDate(item.date)} ·{' '}
               {STATUS_LABEL[item.status]}
             </Text>
           </Pressable>
