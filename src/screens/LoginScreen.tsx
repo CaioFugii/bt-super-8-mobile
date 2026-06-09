@@ -5,9 +5,9 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
+import AppTextInput from '../components/AppTextInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthStore } from '../store/authStore';
 import { extractApiErrorMessage } from '../utils/apiError';
@@ -31,7 +31,7 @@ export default function LoginScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Super 8 Beach Tennis</Text>
-      <TextInput
+      <AppTextInput
         style={styles.input}
         placeholder="E-mail"
         autoCapitalize="none"
@@ -39,7 +39,7 @@ export default function LoginScreen({ navigation }: Props) {
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
+      <AppTextInput
         style={styles.input}
         placeholder="Senha"
         secureTextEntry

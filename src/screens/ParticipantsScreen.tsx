@@ -6,11 +6,11 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api/client';
+import AppTextInput from '../components/AppTextInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Gender, Participant, Tournament } from '../types';
 import { extractApiErrorMessage } from '../utils/apiError';
@@ -143,7 +143,7 @@ export default function ParticipantsScreen({ route }: Props) {
             </View>
           )}
           <View style={styles.addRow}>
-            <TextInput
+            <AppTextInput
               style={styles.input}
               placeholder="Nome do participante"
               value={name}

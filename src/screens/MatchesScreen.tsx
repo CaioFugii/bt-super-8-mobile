@@ -7,11 +7,11 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api/client';
+import AppTextInput from '../components/AppTextInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Match, WinnerTeam } from '../types';
 import { extractApiErrorMessage } from '../utils/apiError';
@@ -154,7 +154,7 @@ export default function MatchesScreen({ route }: Props) {
             {isEditing ? 'Editar resultado' : 'Resultado'}
           </Text>
           <View style={styles.scoreRow}>
-            <TextInput
+            <AppTextInput
               style={styles.scoreInput}
               keyboardType="number-pad"
               placeholder="A"
@@ -163,7 +163,7 @@ export default function MatchesScreen({ route }: Props) {
               editable={!processing}
             />
             <Text>x</Text>
-            <TextInput
+            <AppTextInput
               style={styles.scoreInput}
               keyboardType="number-pad"
               placeholder="B"

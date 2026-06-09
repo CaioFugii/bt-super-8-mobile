@@ -6,10 +6,10 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { api } from '../api/client';
+import AppTextInput from '../components/AppTextInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Tournament, TournamentFormat } from '../types';
 import { extractApiErrorMessage } from '../utils/apiError';
@@ -123,7 +123,7 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
       {format === 'SUPER_8_MIXED' && (
         <Text style={styles.hint}>4 homens + 4 mulheres · duplas mistas</Text>
       )}
-      <TextInput
+      <AppTextInput
         style={[styles.input, nameError && styles.inputError]}
         placeholder="Nome do torneio"
         value={name}
@@ -133,7 +133,7 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
         }}
       />
       {nameError && <Text style={styles.fieldError}>{nameError}</Text>}
-      <TextInput
+      <AppTextInput
         style={[styles.input, dateError && styles.inputError]}
         placeholder="Data (DD/MM/AAAA)"
         value={date}
@@ -145,7 +145,7 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
         maxLength={10}
       />
       {dateError && <Text style={styles.fieldError}>{dateError}</Text>}
-      <TextInput style={styles.input} placeholder="Local" value={location} onChangeText={setLocation} />
+      <AppTextInput style={styles.input} placeholder="Local" value={location} onChangeText={setLocation} />
       <Text style={styles.label}>Games por set</Text>
       <View style={styles.row}>
         <Pressable
@@ -165,11 +165,11 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
         <Text>Tie-break</Text>
         <Switch value={hasTieBreak} onValueChange={setHasTieBreak} />
       </View>
-      <TextInput style={styles.input} placeholder="Quadras (1-10)" keyboardType="number-pad" value={courtCount} onChangeText={setCourtCount} />
+      <AppTextInput style={styles.input} placeholder="Quadras (1-10)" keyboardType="number-pad" value={courtCount} onChangeText={setCourtCount} />
       <Text style={styles.label}>Placar W.O. (vencedor x perdedor)</Text>
       <View style={styles.row}>
-        <TextInput style={[styles.input, styles.half]} keyboardType="number-pad" value={woWinner} onChangeText={setWoWinner} />
-        <TextInput style={[styles.input, styles.half]} keyboardType="number-pad" value={woLoser} onChangeText={setWoLoser} />
+        <AppTextInput style={[styles.input, styles.half]} keyboardType="number-pad" value={woWinner} onChangeText={setWoWinner} />
+        <AppTextInput style={[styles.input, styles.half]} keyboardType="number-pad" value={woLoser} onChangeText={setWoLoser} />
       </View>
       <View style={styles.switchRow}>
         <Text>Troféu Frango (prenda do último)</Text>

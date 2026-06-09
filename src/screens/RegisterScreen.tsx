@@ -6,8 +6,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
 } from 'react-native';
+import AppTextInput from '../components/AppTextInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthStore } from '../store/authStore';
 import { extractApiErrorMessage } from '../utils/apiError';
@@ -37,8 +37,8 @@ export default function RegisterScreen({ navigation }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <TextInput style={styles.input} placeholder="Nome" value={name} onChangeText={setName} />
-      <TextInput
+      <AppTextInput style={styles.input} placeholder="Nome" value={name} onChangeText={setName} />
+      <AppTextInput
         style={styles.input}
         placeholder="E-mail"
         autoCapitalize="none"
@@ -46,14 +46,14 @@ export default function RegisterScreen({ navigation }: Props) {
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
+      <AppTextInput
         style={styles.input}
         placeholder="Senha (mín. 6)"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
-      <TextInput
+      <AppTextInput
         style={styles.input}
         placeholder="Instagram (@opcional)"
         autoCapitalize="none"
