@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthStore } from '../store/authStore';
@@ -28,6 +29,7 @@ const STATUS_LABEL: Record<TournamentStatus, string> = {
 export default function HomeScreen({ navigation }: Props) {
   const logout = useAuthStore((s) => s.logout);
   const organizer = useAuthStore((s) => s.organizer);
+  const insets = useSafeAreaInsets();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [filter, setFilter] = useState<TournamentStatus | undefined>();
 
@@ -45,7 +47,7 @@ export default function HomeScreen({ navigation }: Props) {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(12, insets.bottom) }]}>
       <Text style={styles.greeting}>Olá, {organizer?.name}</Text>
       <View style={styles.filters}>
         {([undefined, 'DRAFT', 'IN_PROGRESS', 'FINISHED'] as const).map((s) => (

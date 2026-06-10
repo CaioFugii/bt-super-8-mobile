@@ -4,6 +4,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { ChallengeData } from '../types';
@@ -12,6 +13,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Challenge'>;
 
 export default function ChallengeScreen({ route }: Props) {
   const { tournamentId } = route.params;
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState<ChallengeData | null>(null);
   const cardRef = useRef<View>(null);
 
@@ -41,7 +43,12 @@ export default function ChallengeScreen({ route }: Props) {
   if (!data) return <Text style={styles.loading}>Carregando...</Text>;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: Math.max(16, insets.bottom + 8) },
+      ]}
+    >
       <View ref={cardRef} style={styles.card} collapsable={false}>
         <Text style={styles.emoji}>🐔 TROFÉU FRANGO</Text>
         <Text style={styles.name}>{data.participant.name}</Text>

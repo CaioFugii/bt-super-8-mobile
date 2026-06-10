@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import type { Tournament } from '../types';
@@ -15,6 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TournamentDetail'>;
 
 export default function TournamentDetailScreen({ navigation, route }: Props) {
   const { tournamentId } = route.params;
+  const insets = useSafeAreaInsets();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [processing, setProcessing] = useState(false);
 
@@ -95,7 +97,12 @@ export default function TournamentDetailScreen({ navigation, route }: Props) {
   if (!tournament) return null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: Math.max(16, insets.bottom + 8) },
+      ]}
+    >
       {processing && (
         <View style={styles.processing}>
           <ActivityIndicator color="#0d9488" />

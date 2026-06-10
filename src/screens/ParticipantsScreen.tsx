@@ -30,6 +30,7 @@ export default function ParticipantsScreen({ route }: Props) {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [name, setName] = useState('');
   const [gender, setGender] = useState<Gender>('MALE');
+  const [nameError, setNameError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const isMixed = tournament?.format === 'SUPER_8_MIXED';
@@ -52,17 +53,32 @@ export default function ParticipantsScreen({ route }: Props) {
   );
 
   const add = async () => {
-    if (!name.trim()) return;
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+      setNameError('Informe o nome do participante.');
+      return;
+    }
+    if (normalizedName.length < 2) {
+      setNameError('O nome deve ter pelo menos 2 caracteres.');
+      return;
+    }
+    if (normalizedName.length > 80) {
+      setNameError('O nome do participante pode ter no máximo 80 caracteres.');
+      return;
+    }
+    setNameError(null);
+
     if (isMixed && !gender) {
       Alert.alert('Erro', 'Selecione o gênero do participante.');
       return;
     }
     try {
       await api.post(`/tournaments/${tournamentId}/participants`, {
-        name: name.trim(),
+        name: normalizedName,
         ...(isMixed ? { gender } : {}),
       });
       setName('');
+      setNameError(null);
       load();
     } catch (e) {
       showError(extractApiErrorMessage(e));
@@ -144,15 +160,19 @@ export default function ParticipantsScreen({ route }: Props) {
           )}
           <View style={styles.addRow}>
             <AppTextInput
-              style={styles.input}
+              style={[styles.input, nameError && styles.inputError]}
               placeholder="Nome do participante"
               value={name}
-              onChangeText={setName}
+              onChangeText={(value) => {
+                setName(value);
+                if (nameError) setNameError(null);
+              }}
             />
             <Pressable style={styles.addBtn} onPress={add}>
               <Text style={styles.addBtnText}>+</Text>
             </Pressable>
           </View>
+          {nameError && <Text style={styles.fieldError}>{nameError}</Text>}
         </>
       )}
       <FlatList
@@ -209,6 +229,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#99f6e4',
   },
+  inputError: { borderColor: '#dc2626' },
+  fieldError: { color: '#dc2626', marginTop: -8, marginBottom: 10 },
   addBtn: {
     backgroundColor: '#0d9488',
     width: 48,

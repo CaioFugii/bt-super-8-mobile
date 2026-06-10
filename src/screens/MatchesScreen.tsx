@@ -31,6 +31,7 @@ export default function MatchesScreen({ route }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [scoreA, setScoreA] = useState('');
   const [scoreB, setScoreB] = useState('');
+  const [scoreError, setScoreError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const load = useCallback(async () => {
@@ -45,6 +46,7 @@ export default function MatchesScreen({ route }: Props) {
   );
 
   const openMatch = (match: Match) => {
+    setScoreError(null);
     if (match.status === 'PENDING') {
       setIsEditing(false);
       setSelected(match);
@@ -63,6 +65,28 @@ export default function MatchesScreen({ route }: Props) {
   const saveResult = async () => {
     if (!selected || processing) return;
 
+    const normalizedScoreA = scoreA.trim();
+    const normalizedScoreB = scoreB.trim();
+    if (!normalizedScoreA || !normalizedScoreB) {
+      setScoreError('Preencha os dois placares antes de salvar.');
+      return;
+    }
+
+    const parsedScoreA = Number(normalizedScoreA);
+    const parsedScoreB = Number(normalizedScoreB);
+    const hasInvalidScore =
+      !Number.isInteger(parsedScoreA) ||
+      !Number.isInteger(parsedScoreB) ||
+      parsedScoreA < 0 ||
+      parsedScoreB < 0;
+    if (hasInvalidScore) {
+      setScoreError(
+        'Informe valores inteiros maiores ou iguais a 0 para o placar.',
+      );
+      return;
+    }
+    setScoreError(null);
+
     const confirmed = await confirmAction({
       title: isEditing ? 'Editar placar?' : 'Confirmar placar?',
       message: isEditing
@@ -79,8 +103,8 @@ export default function MatchesScreen({ route }: Props) {
         : `/tournaments/${tournamentId}/matches/${selected.id}/result`;
 
       await api.patch(endpoint, {
-        teamAScore: parseInt(scoreA, 10),
-        teamBScore: parseInt(scoreB, 10),
+        teamAScore: parsedScoreA,
+        teamBScore: parsedScoreB,
       });
       showSuccess('Placar salvo com sucesso.');
       setSelected(null);
@@ -155,23 +179,30 @@ export default function MatchesScreen({ route }: Props) {
           </Text>
           <View style={styles.scoreRow}>
             <AppTextInput
-              style={styles.scoreInput}
+              style={[styles.scoreInput, scoreError && styles.scoreInputError]}
               keyboardType="number-pad"
               placeholder="A"
               value={scoreA}
-              onChangeText={setScoreA}
+              onChangeText={(value) => {
+                setScoreA(value);
+                if (scoreError) setScoreError(null);
+              }}
               editable={!processing}
             />
             <Text>x</Text>
             <AppTextInput
-              style={styles.scoreInput}
+              style={[styles.scoreInput, scoreError && styles.scoreInputError]}
               keyboardType="number-pad"
               placeholder="B"
               value={scoreB}
-              onChangeText={setScoreB}
+              onChangeText={(value) => {
+                setScoreB(value);
+                if (scoreError) setScoreError(null);
+              }}
               editable={!processing}
             />
           </View>
+          {scoreError && <Text style={styles.scoreErrorText}>{scoreError}</Text>}
           <Pressable
             style={[styles.btn, processing && styles.disabled]}
             onPress={saveResult}
@@ -203,7 +234,14 @@ export default function MatchesScreen({ route }: Props) {
               </Pressable>
             </>
           )}
-          <Pressable onPress={() => !processing && setSelected(null)} disabled={processing}>
+          <Pressable
+            onPress={() => {
+              if (processing) return;
+              setScoreError(null);
+              setSelected(null);
+            }}
+            disabled={processing}
+          >
             <Text style={styles.cancel}>Cancelar</Text>
           </Pressable>
         </View>
@@ -224,6 +262,14 @@ const styles = StyleSheet.create({
   modalTitle: { backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12, fontWeight: '700', fontSize: 18 },
   scoreRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#fff', padding: 16 },
   scoreInput: { borderWidth: 1, borderColor: '#ccc', width: 60, textAlign: 'center', padding: 8, borderRadius: 6 },
+  scoreInputError: { borderColor: '#dc2626' },
+  scoreErrorText: {
+    backgroundColor: '#fff',
+    color: '#dc2626',
+    textAlign: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
   btn: { backgroundColor: '#0d9488', padding: 14, alignItems: 'center' },
   btnText: { color: '#fff', fontWeight: '600' },
   woBtn: { backgroundColor: '#fff', padding: 12, alignItems: 'center', borderTopWidth: 1, borderColor: '#eee' },

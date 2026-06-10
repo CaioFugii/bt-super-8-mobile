@@ -11,6 +11,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { extractApiErrorMessage } from '../utils/apiError';
@@ -33,6 +34,7 @@ type ShareLinkResponse = {
 
 export default function ShareTournamentScreen({ route }: Props) {
   const { tournamentId } = route.params;
+  const insets = useSafeAreaInsets();
   const [status, setStatus] = useState<ShareLinkStatus | null>(null);
   const [showQr, setShowQr] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -116,7 +118,12 @@ export default function ShareTournamentScreen({ route }: Props) {
   if (!status) return null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: Math.max(16, insets.bottom + 8) },
+      ]}
+    >
       <Text style={styles.title}>Compartilhamento</Text>
       <Text style={styles.subtitle}>
         Link público temporário para competidores visualizarem o torneio no navegador.

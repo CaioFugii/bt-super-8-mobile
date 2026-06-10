@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 import AppTextInput from '../components/AppTextInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -22,6 +23,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TournamentForm'>;
 export default function TournamentFormScreen({ navigation, route }: Props) {
   const { tournamentId } = route.params;
   const isEdit = Boolean(tournamentId);
+  const insets = useSafeAreaInsets();
 
   const [format, setFormat] = useState<TournamentFormat>('SUPER_8');
   const [name, setName] = useState('');
@@ -35,6 +37,9 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
   const [enableForfeit, setEnableForfeit] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
+  const [courtCountError, setCourtCountError] = useState<string | null>(null);
+  const [woWinnerError, setWoWinnerError] = useState<string | null>(null);
+  const [woLoserError, setWoLoserError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -54,8 +59,13 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
   }, [tournamentId]);
 
   const onSave = async () => {
-    if (!name.trim()) {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
       setNameError('Informe o nome do torneio.');
+      return;
+    }
+    if (normalizedName.length < 3) {
+      setNameError('O nome do torneio deve ter pelo menos 3 caracteres.');
       return;
     }
     setNameError(null);
@@ -67,16 +77,41 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
     }
     setDateError(null);
 
+    const parsedCourtCount = Number(courtCount.trim());
+    if (
+      !Number.isInteger(parsedCourtCount) ||
+      parsedCourtCount < 1 ||
+      parsedCourtCount > 10
+    ) {
+      setCourtCountError('Quantidade de quadras deve ser entre 1 e 10.');
+      return;
+    }
+    setCourtCountError(null);
+
+    const parsedWoWinner = Number(woWinner.trim());
+    if (!Number.isInteger(parsedWoWinner) || parsedWoWinner < 0) {
+      setWoWinnerError('Informe um valor inteiro maior ou igual a 0.');
+      return;
+    }
+    setWoWinnerError(null);
+
+    const parsedWoLoser = Number(woLoser.trim());
+    if (!Number.isInteger(parsedWoLoser) || parsedWoLoser < 0) {
+      setWoLoserError('Informe um valor inteiro maior ou igual a 0.');
+      return;
+    }
+    setWoLoserError(null);
+
     const payload = {
       format,
-      name: name.trim(),
+      name: normalizedName,
       date: apiDate,
       location: location.trim() || undefined,
       scoreLimit,
       hasTieBreak,
-      courtCount: parseInt(courtCount, 10) || 1,
-      walkoverScoreWinner: parseInt(woWinner, 10),
-      walkoverScoreLoser: parseInt(woLoser, 10),
+      courtCount: parsedCourtCount,
+      walkoverScoreWinner: parsedWoWinner,
+      walkoverScoreLoser: parsedWoLoser,
       enableForfeitChallenge: enableForfeit,
       forfeitChallengeMode: enableForfeit ? ('RANDOM' as const) : undefined,
     };
@@ -96,6 +131,14 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
       const message = extractApiErrorMessage(e);
       if (message.includes('nome do torneio')) {
         setNameError(message);
+      } else if (message.includes('data')) {
+        setDateError(message);
+      } else if (message.includes('quadras')) {
+        setCourtCountError(message);
+      } else if (message.includes('vencedor')) {
+        setWoWinnerError(message);
+      } else if (message.includes('perdedor')) {
+        setWoLoserError(message);
       } else {
         showError(message);
       }
@@ -105,7 +148,12 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: Math.max(16, insets.bottom + 8) },
+      ]}
+    >
       <Text style={styles.label}>Formato</Text>
       <View style={styles.row}>
         {(['SUPER_8', 'SUPER_8_MIXED'] as const).map((f) => (
@@ -163,17 +211,58 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
       </View>
       <View style={styles.switchRow}>
         <Text>Tie-break</Text>
-        <Switch value={hasTieBreak} onValueChange={setHasTieBreak} />
+        <Switch
+          value={hasTieBreak}
+          onValueChange={setHasTieBreak}
+          trackColor={{ false: '#94a3b8', true: '#14b8a6' }}
+          thumbColor={hasTieBreak ? '#0f766e' : '#ffffff'}
+          ios_backgroundColor="#94a3b8"
+        />
       </View>
-      <AppTextInput style={styles.input} placeholder="Quadras (1-10)" keyboardType="number-pad" value={courtCount} onChangeText={setCourtCount} />
+      <AppTextInput
+        style={[styles.input, courtCountError && styles.inputError]}
+        placeholder="Quadras (1-10)"
+        keyboardType="number-pad"
+        value={courtCount}
+        onChangeText={(value) => {
+          setCourtCount(value);
+          if (courtCountError) setCourtCountError(null);
+        }}
+      />
+      {courtCountError && <Text style={styles.fieldError}>{courtCountError}</Text>}
       <Text style={styles.label}>Placar W.O. (vencedor x perdedor)</Text>
       <View style={styles.row}>
-        <AppTextInput style={[styles.input, styles.half]} keyboardType="number-pad" value={woWinner} onChangeText={setWoWinner} />
-        <AppTextInput style={[styles.input, styles.half]} keyboardType="number-pad" value={woLoser} onChangeText={setWoLoser} />
+        <AppTextInput
+          style={[styles.input, styles.half, woWinnerError && styles.inputError]}
+          keyboardType="number-pad"
+          value={woWinner}
+          onChangeText={(value) => {
+            setWoWinner(value);
+            if (woWinnerError) setWoWinnerError(null);
+          }}
+        />
+        <AppTextInput
+          style={[styles.input, styles.half, woLoserError && styles.inputError]}
+          keyboardType="number-pad"
+          value={woLoser}
+          onChangeText={(value) => {
+            setWoLoser(value);
+            if (woLoserError) setWoLoserError(null);
+          }}
+        />
       </View>
+      {(woWinnerError || woLoserError) && (
+        <Text style={styles.fieldError}>{woWinnerError ?? woLoserError}</Text>
+      )}
       <View style={styles.switchRow}>
         <Text>Troféu Frango (prenda do último)</Text>
-        <Switch value={enableForfeit} onValueChange={setEnableForfeit} />
+        <Switch
+          value={enableForfeit}
+          onValueChange={setEnableForfeit}
+          trackColor={{ false: '#94a3b8', true: '#14b8a6' }}
+          thumbColor={enableForfeit ? '#0f766e' : '#ffffff'}
+          ios_backgroundColor="#94a3b8"
+        />
       </View>
       <Pressable style={[styles.button, saving && styles.buttonDisabled]} onPress={onSave} disabled={saving}>
         <Text style={styles.buttonText}>{saving ? 'Salvando...' : 'Salvar'}</Text>
